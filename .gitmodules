@@ -3,4 +3,4 @@
 	url = https://github.com/ValveSoftware/openvr.git
 [submodule "vendor/vrpn"]
 	path = vendor/vrpn
-url=https://github.com/sat-metalab/vrpn.git
+	url = https://github.com/vrpn/vrpn.git
