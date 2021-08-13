@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-
+#include <mutex>
 #include "console.h"
+
+char console_fb[3][console_window_height][console_window_width];
+static int console_window_row = 0;
 
 char console_keypress(HANDLE hStdin)
 {
@@ -108,10 +111,13 @@ void console_cls(HANDLE hConsole)
 
 void console_put(char* str)
 {
-    char buf[console_window_width], fmt[16];
+    char fmt[16];
+
+    if (console_window_row >= console_window_height)
+        return;
+
     snprintf(fmt, sizeof(fmt), "%%-%ds", console_window_width - 2);
-    snprintf(buf, console_window_width, fmt, str);
-    fprintf(stdout, "%s\n", buf);
+    snprintf(console_fb[0][console_window_row++], console_window_width, fmt, str);
 }
 
 int vscprintf(const char *format, va_list ap)
@@ -148,3 +154,32 @@ int asprintf(char **strp, const char *format, ...)
     va_end(ap);
     return retval;
 }
+
+static std::mutex g_pages_mutex;
+
+void console_swap_fb()
+{
+    std::lock_guard<std::mutex> guard(g_pages_mutex);
+
+    memcpy(console_fb[1], console_fb[0], console_window_width * console_window_height);
+
+    // reset counter
+    console_window_row = 0;
+
+    // clear
+    memset(console_fb[0], 0, console_window_width * console_window_height);
+};
+
+void console_blit_fb()
+{
+    {
+        std::lock_guard<std::mutex> guard(g_pages_mutex);
+        memcpy(console_fb[2], console_fb[1], console_window_width * console_window_height);
+    };
+
+    SetConsoleCursorPosition(console_out, { 0, 0 });
+    //    console_cls(GetStdHandle(STD_ERROR_HANDLE));
+    //    console_cls(GetStdHandle(STD_OUTPUT_HANDLE));
+    for (int i = 0; i < console_window_height - 1; i++)
+        fprintf(stdout, "%s\n", console_fb[2][i]);
+};

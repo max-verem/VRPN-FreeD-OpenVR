@@ -1,6 +1,9 @@
 #include <windows.h>
 #include <memory>
+#include <chrono>
+#include <thread>
 #include "vrpn_Server_OpenVR.h"
+#include "console.h"
 
 static volatile int done = 0;
 std::unique_ptr<vrpn_Server_OpenVR> server{};
@@ -31,11 +34,20 @@ BOOL WINAPI handleConsoleSignalsWin(DWORD signaltype)
 }
 #endif
 
-#define WS_VER_MAJOR 2
-#define WS_VER_MINOR 2
+static void console_update_thread()
+{
+    while (!done)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        console_blit_fb();
+    };
+};
 
 int main(int argc, char *argv[]) {
 #if 0
+#define WS_VER_MAJOR 2
+#define WS_VER_MINOR 2
+
     // init winsock
     WSADATA wsaData;
     WSAStartup
@@ -45,11 +57,13 @@ int main(int argc, char *argv[]) {
         &wsaData
     );
 #endif
+    std::thread cu(console_update_thread);
     server = std::make_unique<vrpn_Server_OpenVR>(argc, argv);
     while (!done) {
         server->mainloop();
         vrpn_SleepMsecs(server->sleep_interval);
     }
     server.reset(nullptr);
+    cu.join();
     return 0;
 }

@@ -94,19 +94,16 @@ void vrpn_Tracker_OpenVR::updateTracking(vr::TrackedDevicePose_t *pose)
 	}
 }
 
-void vrpn_Tracker_OpenVR::getRotation(q_type& q_current)
+void vrpn_Tracker_OpenVR::getPose(q_xyz_quat_type *pose)
 {
-    q_current[0] = d_quat[0];
-    q_current[1] = d_quat[1];
-    q_current[2] = d_quat[2];
-    q_current[3] = d_quat[3];
-}
+    pose->quat[0] = d_quat[0];
+    pose->quat[1] = d_quat[1];
+    pose->quat[2] = d_quat[2];
+    pose->quat[3] = d_quat[3];
 
-void vrpn_Tracker_OpenVR::getPosition(q_vec_type& vec)
-{
-    vec[0] = pos[0];
-    vec[1] = pos[1];
-    vec[2] = pos[2];
+    pose->xyz[0] = pos[0];
+    pose->xyz[1] = pos[1];
+    pose->xyz[2] = pos[2];
 }
 
 std::string vrpn_Tracker_OpenVR::getName()

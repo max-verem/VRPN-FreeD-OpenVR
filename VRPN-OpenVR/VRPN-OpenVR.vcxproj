@@ -156,6 +156,7 @@
     <ClCompile Include="vrpn_Tracker_OpenVR.cpp" />
     <ClCompile Include="vrpn_Tracker_OpenVR_Controller.cpp" />
     <ClCompile Include="vrpn_Tracker_OpenVR_HMD.cpp" />
+    <ClCompile Include="wt.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="console.h" />
@@ -166,6 +167,7 @@
     <ClInclude Include="vrpn_Tracker_OpenVR.h" />
     <ClInclude Include="vrpn_Tracker_OpenVR_Controller.h" />
     <ClInclude Include="vrpn_Tracker_OpenVR_HMD.h" />
+    <ClInclude Include="wt.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\vendor\vrpn\quat\quatlib.vcxproj">

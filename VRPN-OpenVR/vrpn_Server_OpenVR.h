@@ -45,7 +45,6 @@ public:
 	~vrpn_Server_OpenVR();
 	void mainloop();
     int sleep_interval;
-    HANDLE console_in, console_out;
     static const std::string getDeviceClassName(vr::ETrackedDeviceClass device_class_id);
     static const std::string getDeviceSerial(vr::TrackedDeviceIndex_t trackedDeviceIndex, vr::IVRSystem * vr);
 private:
@@ -53,7 +52,6 @@ private:
 	vrpn_Connection *connection;
     std::map<vr::TrackedDeviceIndex_t, std::unique_ptr<vrpn_Tracker_OpenVR>> devices{};
     std::list<std::unique_ptr<vrpn_Tracker_Camera>> cameras{};
-    q_vec_type reference_point, reference_position;
-    q_type reference_quat;
+    q_xyz_quat_type stk, ref;
 };
 

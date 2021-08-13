@@ -12,8 +12,7 @@ public:
 	vrpn_Tracker_OpenVR(const std::string& name, vrpn_Connection* connection, vr::IVRSystem * vr, vr::TrackedDeviceIndex_t trackedDeviceIndex);
 	void mainloop();
 	void updateTracking(vr::TrackedDevicePose_t *pose);
-    void getRotation(q_type& quat);
-    void getPosition(q_vec_type& vec);
+    void getPose(q_xyz_quat_type *pose);
     std::string getName();
 
 protected:

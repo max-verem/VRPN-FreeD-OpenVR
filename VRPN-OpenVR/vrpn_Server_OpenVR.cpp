@@ -11,6 +11,11 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
     std::string connectionName = "";
     int listen_vrpn_port = vrpn_DEFAULT_LISTEN_PORT_NO;
 
+    // set quaternions default
+    q_type I = Q_ID_QUAT;
+    q_copy(stk.quat, I);
+    q_copy(ref.quat, I);
+
     sleep_interval = 1;
 
     // Initialize OpenVR
@@ -38,14 +43,20 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
                 sleep_interval = atoi(argv[p + 1]);
                 p += 2;
             }
-            else if (!strcmp(argv[p], "ref") && (p + 3) <= argc)    // 3 argument: ref <x> <y> <z>
+            else if (!strcmp(argv[p], "ref") && (p + 6) <= argc)    // 3 argument: ref <x> <y> <z> <yaw'> <roll'> <pitch'>
             {
-                reference_point[0] = atof(argv[p + 1]);
-                reference_point[1] = atof(argv[p + 2]);
-                reference_point[2] = atof(argv[p + 3]);
-                p += 4;
+                ref.xyz[0] = atof(argv[p + 1]);
+                ref.xyz[1] = atof(argv[p + 2]);
+                ref.xyz[2] = atof(argv[p + 3]);
+
+                q_from_euler(ref.quat,
+                    Q_DEG_TO_RAD(atof(argv[p + 4])),
+                    Q_DEG_TO_RAD(atof(argv[p + 5])),
+                    Q_DEG_TO_RAD(atof(argv[p + 6])));
+
+                p += 7;
             }
-            else if (!strcmp(argv[p], "cam") && (p + 5) <= argc)    // 5 argument: cam <NAME> <TRACKER SERIAL> <x> <y> <z>
+            else if (!strcmp(argv[p], "cam") && (p + 8) <= argc)    // 8 argument: cam <NAME> <TRACKER SERIAL> <x> <y> <z> <yaw'> <roll'> <pitch'>
             {
                 // Initialize VRPN Connection
                 if (connectionName == "")
@@ -54,7 +65,7 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
                     connection = vrpn_create_server_connection(connectionName.c_str());
                 }
 
-                q_vec_type arm;
+                q_xyz_quat_type arm;
                 std::unique_ptr<vrpn_Tracker_Camera> newCAM;
                 std::string name, serial;
 
@@ -65,14 +76,19 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
                 serial = argv[p + 2];
 
                 // build arm
-                arm[0] = atof(argv[p + 3]);
-                arm[1] = atof(argv[p + 4]);
-                arm[2] = atof(argv[p + 5]);
+                arm.xyz[0] = atof(argv[p + 3]);
+                arm.xyz[1] = atof(argv[p + 4]);
+                arm.xyz[2] = atof(argv[p + 5]);
+
+                q_from_euler(arm.quat,
+                    Q_DEG_TO_RAD(atof(argv[p + 6])),
+                    Q_DEG_TO_RAD(atof(argv[p + 7])),
+                    Q_DEG_TO_RAD(atof(argv[p + 8])));
 
                 // build cam class
-                newCAM = std::make_unique<vrpn_Tracker_Camera>(cam_idx++, name, connection, serial, arm);
+                newCAM = std::make_unique<vrpn_Tracker_Camera>(cam_idx++, name, connection, serial, &arm);
 
-                p += 6;
+                p += 9;
 
                 /* check if dst for free-d specified */
                 while (p < argc && !strcmp(argv[p], "filter"))
@@ -137,6 +153,23 @@ vrpn_Server_OpenVR::~vrpn_Server_OpenVR() {
     }
 }
 
+static void console_put_xyz_quat(const char* title, const q_xyz_quat_type *val)
+{
+    char *buf = NULL;
+    q_vec_type yawPitchRoll;
+
+    q_to_euler(yawPitchRoll, val->quat); // quaternion to euler for display
+
+    asprintf(&buf, "%8s=[%8.4f, %8.4f, %8.4f], euler=[Yaw/Z=%8.4f', Pitch/Y=%8.4f', Roll/X=%8.4f']",
+        title, val->xyz[0], val->xyz[1], val->xyz[2],
+        Q_RAD_TO_DEG(yawPitchRoll[0]),
+        Q_RAD_TO_DEG(yawPitchRoll[1]),
+        Q_RAD_TO_DEG(yawPitchRoll[2]));
+    console_put(buf);
+
+    free(buf);
+}
+
 void vrpn_Server_OpenVR::mainloop() {
     char *buf = NULL, press;
     int ref_tracker_idx = -1;
@@ -155,11 +188,6 @@ void vrpn_Server_OpenVR::mainloop() {
         m_rTrackedDevicePose,
         vr::k_unMaxTrackedDeviceCount
     );
-
-    // setup cusrsor to top
-    SetConsoleCursorPosition(console_out, { 0, 0 });
-//    console_cls(GetStdHandle(STD_ERROR_HANDLE));
-//    console_cls(GetStdHandle(STD_OUTPUT_HANDLE));
 
     // show built info
     buf = NULL;
@@ -245,32 +273,10 @@ void vrpn_Server_OpenVR::mainloop() {
         };
 
         /* display position and rot */
-        q_vec_type vec;
-        dev->getPosition(vec);
-        q_type quat;
-        dev->getRotation(quat);
-        q_vec_type yawPitchRoll;
-        q_to_euler(yawPitchRoll, quat); // quaternion to euler for display
-        /*
-            resulting vector is:
+        q_xyz_quat_type mnt;
+        dev->getPose(&mnt);
+        console_put_xyz_quat("pos", &mnt);
 
-            [0] - Q_YAW - rotation about Z
-            [1] - Q_PITCH - rotation about Y
-            [2] - Q_ROLL - rotation about X
-        */
-        buf = NULL; asprintf(&buf, "        pos=[%8.4f, %8.4f, %8.4f], euler=[Yaw/Z=%8.4f, Pitch/Y=%8.4f, Roll/X=%8.4f]",
-            vec[0], vec[1], vec[2],
-            yawPitchRoll[0] * 180.0 / 3.1415926,
-            yawPitchRoll[1] * 180.0 / 3.1415926,
-            yawPitchRoll[2] * 180.0 / 3.1415926);
-        console_put(buf);
-        if (buf) free(buf);
-#if 0
-        buf = NULL; asprintf(&buf, "        spd=[%8.4f, %8.4f, %8.4f]",
-            pose->vVelocity.v[0], pose->vVelocity.v[1], pose->vVelocity.v[2]);
-        console_put(buf);
-        if (buf) free(buf);
-#endif
         /* find camera assiciated with that tracker */
         for (const auto& ci : cameras)
         {
@@ -279,7 +285,7 @@ void vrpn_Server_OpenVR::mainloop() {
                 continue;
 
             /* do some precomputation */
-            ci->updateTracking(vec, quat, reference_position, reference_quat, reference_point, &timestamp);
+            ci->updateTracking(&stk, &mnt, &ref, &timestamp);
             ci->mainloop();
         }
 
@@ -288,10 +294,7 @@ void vrpn_Server_OpenVR::mainloop() {
 
         /* save tracker data as reference position */
         if (ref_tracker_idx == unTrackedDevice)
-        {
-            dev->getPosition(reference_position);
-            dev->getRotation(reference_quat);
-        }
+            stk = mnt;
     }
 
     console_put("Virtual space:");
@@ -299,37 +302,15 @@ void vrpn_Server_OpenVR::mainloop() {
 
     {
         /* display reference point */
-        buf = NULL; asprintf(&buf, "        ref=[%8.4f, %8.4f, %8.4f]",
-            reference_point[0], reference_point[1], reference_point[2]);
-        console_put(buf);
-        if (buf) free(buf);
+        console_put_xyz_quat("ref", &ref);
 
-        /* display reference position and rot */
-        q_vec_type vec;
-        vec[0] = reference_position[0]; vec[1] = reference_position[1]; vec[2] = reference_position[2];
-        q_type quat;
-        quat[0] = reference_quat[0]; quat[1] = reference_quat[1]; quat[2] = reference_quat[2]; quat[3] = reference_quat[3];
-        q_vec_type yawPitchRoll;
-        q_to_euler(yawPitchRoll, quat); // quaternion to euler for display
-        /*
-            resulting vector is:
-
-            [0] - Q_YAW - rotation about Z
-            [1] - Q_PITCH - rotation about Y
-            [2] - Q_ROLL - rotation about X
-        */
-        buf = NULL; asprintf(&buf, "        pos=[%8.4f, %8.4f, %8.4f], euler=[Yaw/Z=%8.4f, Pitch/Y=%8.4f, Roll/X=%8.4f]",
-            vec[0], vec[1], vec[2],
-            yawPitchRoll[0] * 180.0 / 3.1415926,
-            yawPitchRoll[1] * 180.0 / 3.1415926,
-            yawPitchRoll[2] * 180.0 / 3.1415926);
-        console_put(buf);
-        if (buf) free(buf);
+        /* display reference tracker position and rot */
+        console_put_xyz_quat("stk", &stk);
 
         /* empty line */
         console_put("");
     }
-#if 1
+
     console_put("Virtual cameras:");
     console_put("");
 
@@ -342,26 +323,9 @@ void vrpn_Server_OpenVR::mainloop() {
         if (buf) free(buf);
 
         /* display position and rot */
-        q_vec_type vec;
-        ci->getPosition(vec);
-        q_type quat;
-        ci->getRotation(quat);
-        q_vec_type yawPitchRoll;
-        q_to_euler(yawPitchRoll, quat); // quaternion to euler for display
-        /*
-            resulting vector is:
-
-            [0] - Q_YAW - rotation about Z
-            [1] - Q_PITCH - rotation about Y
-            [2] - Q_ROLL - rotation about X
-        */
-        buf = NULL; asprintf(&buf, "        pos=[%8.4f, %8.4f, %8.4f], euler=[Yaw/Z=%8.4f, Pitch/Y=%8.4f, Roll/X=%8.4f]",
-            vec[0], vec[1], vec[2],
-            yawPitchRoll[0] * 180.0 / 3.1415926,
-            yawPitchRoll[1] * 180.0 / 3.1415926,
-            yawPitchRoll[2] * 180.0 / 3.1415926);
-        console_put(buf);
-        if (buf) free(buf);
+        q_xyz_quat_type pos;
+        ci->getPose(&pos);
+        console_put_xyz_quat("pos", &pos);
 
         /* empty line */
         console_put("");
@@ -369,7 +333,10 @@ void vrpn_Server_OpenVR::mainloop() {
 
     /* empty line */
     console_put("");
-#endif
+
+    // setup cusrsor to top
+    console_swap_fb();
+
     // Send and receive all messages.
     connection->mainloop();
 
@@ -403,4 +370,6 @@ const std::string vrpn_Server_OpenVR::getDeviceSerial(vr::TrackedDeviceIndex_t t
     };
     return device_serial;
 }
+
+HANDLE console_in, console_out;
 
