@@ -160,7 +160,7 @@ static void console_put_xyz_quat(const char* title, const q_xyz_quat_type *val)
 
     q_to_euler(yawPitchRoll, val->quat); // quaternion to euler for display
 
-    asprintf(&buf, "%8s=[%8.4f, %8.4f, %8.4f], euler=[Yaw/Z=%8.4f', Pitch/Y=%8.4f', Roll/X=%8.4f']",
+    asprintf(&buf, "%8s=[%8.4f, %8.4f, %8.4f], euler=[Yaw/Z=%9.4f', Pitch/Y=%9.4f', Roll/X=%9.4f']",
         title, val->xyz[0], val->xyz[1], val->xyz[2],
         Q_RAD_TO_DEG(yawPitchRoll[0]),
         Q_RAD_TO_DEG(yawPitchRoll[1]),
@@ -170,10 +170,24 @@ static void console_put_xyz_quat(const char* title, const q_xyz_quat_type *val)
     free(buf);
 }
 
+static int64_t utils_timeval_diff_us(struct timeval *B, struct timeval *A)
+{
+    int64_t r;
+
+    r = B->tv_sec - A->tv_sec;
+    r *= 1000000LL;
+    r += B->tv_usec - A->tv_usec;
+
+    return r;
+};
+
+static struct timeval timestamp5 = { 0, 0 };
+
 void vrpn_Server_OpenVR::mainloop() {
     char *buf = NULL, press;
     int ref_tracker_idx = -1;
     struct timeval timestamp;
+    struct timeval timestamp2, timestamp3, timestamp4;
 
     press = console_keypress(console_in);
     if (press >= '0' && press <= '9')
@@ -188,6 +202,7 @@ void vrpn_Server_OpenVR::mainloop() {
         m_rTrackedDevicePose,
         vr::k_unMaxTrackedDeviceCount
     );
+    vrpn_gettimeofday(&timestamp2, NULL);
 
     // show built info
     buf = NULL;
@@ -334,8 +349,7 @@ void vrpn_Server_OpenVR::mainloop() {
     /* empty line */
     console_put("");
 
-    // setup cusrsor to top
-    console_swap_fb();
+    vrpn_gettimeofday(&timestamp3, NULL);
 
     // Send and receive all messages.
     connection->mainloop();
@@ -344,6 +358,26 @@ void vrpn_Server_OpenVR::mainloop() {
     if (!connection->doing_okay()) {
         std::cerr << "Connection is not doing ok. Should we bail?" << std::endl;
     }
+
+    vrpn_gettimeofday(&timestamp4, NULL);
+
+    // show some timings
+    buf = NULL;
+    asprintf(&buf, "stat: %8lld us, %8lld us, %8lld us, %8lld us",
+        utils_timeval_diff_us(&timestamp2, &timestamp),
+        utils_timeval_diff_us(&timestamp3, &timestamp),
+        utils_timeval_diff_us(&timestamp4, &timestamp),
+        utils_timeval_diff_us(&timestamp, &timestamp5)
+    );
+    timestamp5 = timestamp;
+    console_put(buf);
+    if (buf) free(buf);
+
+    /* empty line */
+    console_put("");
+
+    // setup cusrsor to top
+    console_swap_fb();
 }
 
 const std::string vrpn_Server_OpenVR::getDeviceClassName(vr::ETrackedDeviceClass device_class_id)
