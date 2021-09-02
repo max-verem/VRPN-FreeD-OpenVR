@@ -34,6 +34,30 @@ BOOL WINAPI handleConsoleSignalsWin(DWORD signaltype)
 }
 #endif
 
+static void timer_ticker_thread(HANDLE* pevent, int sleep_interval_ms)
+{
+    LARGE_INTEGER ticks_per_second;
+
+    QueryPerformanceFrequency(&ticks_per_second);
+
+    while (!done)
+    {
+        LARGE_INTEGER counter_before;
+        QueryPerformanceCounter(&counter_before);
+        LONGLONG wait_ticks = ticks_per_second.QuadPart * sleep_interval_ms / 1000LL;
+        LONGLONG wait_until = counter_before.QuadPart + wait_ticks;
+        for (;;)
+        {
+            LARGE_INTEGER counter_after;
+            if (!QueryPerformanceCounter(&counter_after))
+                break;
+            if (counter_after.QuadPart >= wait_until)
+                break;
+        };
+        SetEvent(*pevent);
+    }
+};
+
 static void console_update_thread()
 {
     while (!done)
@@ -44,6 +68,7 @@ static void console_update_thread()
 };
 
 int main(int argc, char *argv[]) {
+    HANDLE hTimer;
 #if 0
 #define WS_VER_MAJOR 2
 #define WS_VER_MINOR 2
@@ -59,9 +84,11 @@ int main(int argc, char *argv[]) {
 #endif
     std::thread cu(console_update_thread);
     server = std::make_unique<vrpn_Server_OpenVR>(argc, argv);
+    hTimer = CreateEvent(NULL, FALSE, FALSE, NULL);
+    std::thread ticker(timer_ticker_thread, &hTimer, server->sleep_interval);
     while (!done) {
         server->mainloop();
-        vrpn_SleepMsecs(server->sleep_interval);
+        WaitForSingleObject(hTimer, 1000);
     }
     server.reset(nullptr);
     cu.join();
