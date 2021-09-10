@@ -73,21 +73,25 @@
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\vendor\openvr\headers\;D:\_manual_date\2020\2020-06-12\vrpn-openvr\vendor\vrpn\quat\;..\vendor\vrpn\</IncludePath>
     <OutDir>$(SolutionDir)\install\$(Configuration)-$(PlatformName)</OutDir>
     <IntDir>$(SolutionDir)\temp\$(PlatformName)\$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>$(ProjectName)_v2</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\vendor\openvr\headers\;D:\_manual_date\2020\2020-06-12\vrpn-openvr\vendor\vrpn\quat\;..\vendor\vrpn\</IncludePath>
     <OutDir>$(SolutionDir)\install\$(Configuration)-$(PlatformName)</OutDir>
     <IntDir>$(SolutionDir)\temp\$(PlatformName)\$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>$(ProjectName)_v2</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\vendor\openvr\headers\;D:\_manual_date\2020\2020-06-12\vrpn-openvr\vendor\vrpn\quat\;..\vendor\vrpn\</IncludePath>
     <OutDir>$(SolutionDir)\install\$(Configuration)-$(PlatformName)</OutDir>
     <IntDir>$(SolutionDir)\temp\$(PlatformName)\$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>$(ProjectName)_v2</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\vendor\openvr\headers\;D:\_manual_date\2020\2020-06-12\vrpn-openvr\vendor\vrpn\quat\;..\vendor\vrpn\</IncludePath>
     <OutDir>$(SolutionDir)\install\$(Configuration)-$(PlatformName)</OutDir>
     <IntDir>$(SolutionDir)\temp\$(PlatformName)\$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>$(ProjectName)_v2</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -98,6 +102,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -110,6 +115,7 @@
     <Link>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);openvr_api.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);../vendor/openvr/lib/win64</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(ProjectDir)..\vendor\openvr\bin\win64\*.dll" "$(OutDir)"</Command>
@@ -128,6 +134,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -144,9 +151,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);../vendor/openvr/lib/win64</AdditionalLibraryDirectories>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);openvr_api.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="avg_xyz_quat.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="filter.cpp" />
     <ClCompile Include="FreeD.c" />
@@ -159,6 +168,7 @@
     <ClCompile Include="wt.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="avg_xyz_quat.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="filter.h" />
     <ClInclude Include="FreeD.h" />

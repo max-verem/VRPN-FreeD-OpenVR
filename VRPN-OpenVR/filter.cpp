@@ -1,5 +1,6 @@
 #include "filter.h"
 #include <math.h>
+#include "avg_xyz_quat.h"
 
 filter_median::filter_median(int sz)
 {
@@ -22,30 +23,19 @@ filter_avg::filter_avg(int sz)
 
 void filter_avg::process_data(q_xyz_quat_type *pose)
 {
-    int i, j;
     q_xyz_quat_type tmp;
-
-
-    if (!samples)
-        for (i = 0; i < window; i++)
-            poses[i] = *pose;
-
-    if (samples < window)
-    {
-        poses[samples] = *pose;
-        samples++;
-        return;
-    }
+    std::vector<q_xyz_quat_type> src;
 
     poses[samples % window] = *pose;
     samples++;
 
-    for (j = 0; j < 3; j++)
-    {
-        for (i = 0, tmp.xyz[j] = 0; i < window; i++)
-            tmp.xyz[j] += poses[i].xyz[j];
-        tmp.xyz[j] /= (double)window;
-    }
+    if (samples < window)
+        return;
+
+    for (int i = 0; i < window; i++)
+        src.push_back(poses[i]);
+
+    avg_xyz_quat_v0(src, &tmp);
 
     *pose = tmp;
 }
