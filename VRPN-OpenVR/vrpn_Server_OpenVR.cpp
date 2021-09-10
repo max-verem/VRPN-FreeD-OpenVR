@@ -113,6 +113,11 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
                         newCAM.get()->filterAdd(new filter_exp1pasha(atof(argv[p + 2]), atof(argv[p + 3])));
                         p += 4;
                     }
+                    else if (!strcmp(argv[p + 1], "avg"))
+                    {
+                        newCAM.get()->filterAdd(new filter_avg(atol(argv[p + 2])));
+                        p += 4;
+                    }
                     else
                         break;
                 }
