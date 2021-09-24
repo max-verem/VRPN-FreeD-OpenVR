@@ -35,7 +35,7 @@ void filter_avg::process_data(q_xyz_quat_type *pose)
     for (int i = 0; i < window; i++)
         src.push_back(poses[i]);
 
-    avg_xyz_quat_v0(src, &tmp);
+    avg_xyz_quat_v1(src, &tmp);
 
     *pose = tmp;
 }
