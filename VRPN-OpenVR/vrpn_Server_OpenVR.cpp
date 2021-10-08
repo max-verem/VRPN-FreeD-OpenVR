@@ -118,6 +118,21 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
                         newCAM.get()->filterAdd(new filter_avg(atol(argv[p + 2])));
                         p += 4;
                     }
+                    else if (!strcmp(argv[p + 1], "median"))
+                    {
+                        newCAM.get()->filterAdd(new filter_median(atol(argv[p + 2])));
+                        p += 4;
+                    }
+                    else if (!strcmp(argv[p + 1], "threshold"))
+                    {
+                        newCAM.get()->filterAdd(new filter_threshold(atof(argv[p + 2]), atof(argv[p + 3])));
+                        p += 4;
+                    }
+                    else if (!strcmp(argv[p + 1], "speed_scale"))
+                    {
+                        newCAM.get()->filterAdd(new filter_speed_scale(atof(argv[p + 2]), atof(argv[p + 3])));
+                        p += 4;
+                    }
                     else
                         break;
                 }

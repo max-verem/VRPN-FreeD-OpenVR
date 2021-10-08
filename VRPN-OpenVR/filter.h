@@ -35,6 +35,18 @@ private:
     long long window, samples;
 };
 
+class filter_threshold : public filter_abstract
+{
+public:
+    filter_threshold(double threshold_pos, double threshold_rot);
+    virtual void process_data(q_xyz_quat_type *pose);
+
+private:
+    double threshold_pos, threshold_rot;
+    q_xyz_quat_type prev;
+    int samples;
+};
+
 class filter_exp1 : public filter_abstract
 {
 public:
@@ -78,3 +90,13 @@ private:
     q_xyz_quat_type pose_prev, alpha;
 };
 
+class filter_speed_scale : public filter_abstract
+{
+public:
+    filter_speed_scale(double pos_ratio, double rot_ratio);
+    virtual void process_data(q_xyz_quat_type *pose);
+private:
+    int samples;
+    double pos_ratio, rot_ratio;
+    q_xyz_quat_type pose_prev;
+};

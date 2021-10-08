@@ -2,21 +2,113 @@
 #include <math.h>
 #include "avg_xyz_quat.h"
 
+
+filter_speed_scale::filter_speed_scale(double pos_ratio, double rot_ratio)
+{
+    this->pos_ratio = pos_ratio;
+    this->rot_ratio = rot_ratio;
+    samples = 0;
+}
+
+void filter_speed_scale::process_data(q_xyz_quat_type *pose)
+{
+    q_xyz_quat_type tmp;
+
+    if (samples)
+    {
+        q_vec_type d, s;
+
+        q_vec_subtract(d, pose->xyz, pose_prev.xyz);
+        q_vec_scale(s, pos_ratio, d);
+        q_vec_add(tmp.xyz, pose->xyz, s);
+
+        q_slerp(tmp.quat, pose_prev.quat, pose->quat, rot_ratio);
+
+        *pose = tmp;
+        pose_prev = tmp;
+    }
+    else
+        pose_prev = *pose;
+
+    samples++;
+}
+
+// ---------------------
+
+filter_threshold::filter_threshold(double threshold_pos, double threshold_rot)
+{
+    this->threshold_pos = threshold_pos;
+    this->threshold_rot = threshold_rot;
+    samples = 0;
+}
+
+void filter_threshold::process_data(q_xyz_quat_type *pose)
+{
+    double s;
+    q_type q;
+    q_vec_type ypr;
+
+    if (!samples)
+        prev = *pose;
+
+    s = q_vec_distance(pose->xyz, prev.xyz);
+    if (s > threshold_pos)
+        q_vec_copy(prev.xyz, pose->xyz);
+    else
+        q_vec_copy(pose->xyz, prev.xyz);
+
+    q_invert(q, prev.quat);
+    q_mult(q, pose->quat, q);
+    q_to_euler(ypr, q);
+    s = q_vec_magnitude(ypr);
+    if (s > threshold_rot)
+        q_copy(prev.quat, pose->quat);
+    else
+        q_copy(pose->quat, prev.quat);
+
+    samples++;
+}
+
+// ---------------------
+
 filter_median::filter_median(int sz)
 {
+    if (sz > FILTER_MEDIAN_MAX_WINDOW)
+        sz = FILTER_MEDIAN_MAX_WINDOW;
     window = sz;
     samples = 0;
 }
 
 void filter_median::process_data(q_xyz_quat_type *pose)
 {
+    int p, i, j;
+    q_vec_type median;
+    poses[samples % window] = *pose;
+    samples++;
 
+    if (samples < window)
+        return;
+
+    for (p = 0; p < 3; p++)
+    {
+        for (i = 0; i < window; i++)
+            for (j = i + 1; j < window; j++)
+                if (poses[i].xyz[p] < poses[j].xyz[p])
+                {
+                    q_xyz_quat_type t = poses[i];
+                    poses[i] = poses[j];
+                    poses[j] = t;
+                }
+        median[p] = poses[window / 2].xyz[p];
+    }
+
+    q_vec_copy(pose->xyz, median);
 }
 
 filter_avg::filter_avg(int sz)
 {
-    if (sz > FILTER_MEDIAN_MAX_WINDOW)
-        sz = FILTER_MEDIAN_MAX_WINDOW;
+    if (sz > FILTER_AVG_MAX_WINDOW)
+        sz = FILTER_AVG_MAX_WINDOW;
     window = sz;
     samples = 0;
 }
@@ -54,14 +146,10 @@ void filter_exp1::process_data(q_xyz_quat_type *pose)
 
     if (samples)
     {
-        q_type A, B, I = Q_ID_QUAT;
-
         for (i = 0; i < 3; i++)
             tmp.xyz[i] = alpha_pos * pose->xyz[i] + (1.0 - alpha_pos) * pose_prev.xyz[i];
 
-        q_slerp(A, I, pose->quat, alpha_pos);
-        q_slerp(B, I, pose_prev.quat, 1.0 - alpha_pos);
-        q_mult(tmp.quat, A, B);
+        q_copy(tmp.quat, pose->quat);
 
         *pose = tmp;
         pose_prev = tmp;
