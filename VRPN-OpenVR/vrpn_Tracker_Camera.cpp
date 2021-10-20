@@ -80,15 +80,16 @@ void vrpn_Tracker_Camera::freedSend()
 
     q_xyz_quat_type pose;
     getPose(&pose);
-    freed.X = pose.xyz[0] * 1000.0;
-    freed.Y = pose.xyz[1] * 1000.0;
+    freed.X = pose.xyz[1] * 1000.0;
+    freed.Y = pose.xyz[0] * 1000.0;
     freed.Z = pose.xyz[2] * 1000.0;
 
     q_vec_type yawPitchRoll;
+    pose.quat[2] *= -1.0;
     q_to_euler(yawPitchRoll, pose.quat);
-    freed.Pan = yawPitchRoll[0] * 180.0 / 3.1415926;
-    freed.Roll = yawPitchRoll[2] * 180.0 / 3.1415926;
+    freed.Pan  = yawPitchRoll[0] * 180.0 / 3.1415926;
     freed.Tilt = yawPitchRoll[1] * 180.0 / 3.1415926;
+    freed.Roll = yawPitchRoll[2] * 180.0 / 3.1415926;
 
     FreeD_D1_pack(buf, FREE_D_D1_PACKET_SIZE, &freed);
 
