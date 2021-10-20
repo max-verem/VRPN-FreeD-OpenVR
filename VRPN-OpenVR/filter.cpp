@@ -160,41 +160,7 @@ void filter_exp1::process_data(q_xyz_quat_type *pose)
     samples++;
 }
 
-filter_kalman::filter_kalman(double _pos_E_est, double _pos_E_mea)
-{
-#if 0
-    pos_E_est[0] = pos_E_est[1] = pos_E_est[2] = _pos_E_est;
-    pos_E_mea[0] = pos_E_mea[1] = pos_E_mea[2] = _pos_E_mea;
-    samples = 0;
-#endif
-}
-
-void filter_kalman::process_data(q_xyz_quat_type *pose)
-{
-#if 0
-    int i;
-    q_vec_type KG, pos_EST;
-
-    if (samples == 0)
-    {
-        samples++;
-        q_vec_copy(pos_EST_prev, pos);
-        return;
-    }
-
-    for (i = 0; i < 3; i++)
-    {
-        KG[i] = pos_E_est[i] / (pos_E_est[i] + pos_E_mea[i]);
-
-        pos_EST[i] = pos_EST_prev[i] + KG[i] * (pos[i] - pos_EST_prev[i]);
-
-        pos_E_est[i] = (1 - KG[i]) * pos_E_est[i];
-    };
-
-    q_vec_copy(pos, pos_EST);
-    q_vec_copy(pos_EST_prev, pos_EST);
-#endif
-}
+// ------------------------------------------------------------------------
 
 filter_exp1dyn::filter_exp1dyn(double a_pos, double d_pos)
 {
@@ -228,6 +194,8 @@ void filter_exp1dyn::process_data(q_xyz_quat_type *pose)
 
     samples++;
 }
+
+// ------------------------------------------------------------
 
 filter_exp1pasha::filter_exp1pasha(double a, double b)
 {

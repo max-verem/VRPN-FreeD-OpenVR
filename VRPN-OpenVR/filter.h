@@ -58,16 +58,6 @@ private:
     q_xyz_quat_type pose_prev;
 };
 
-class filter_kalman : public filter_abstract
-{
-public:
-    filter_kalman(double _pos_E_est, double _pos_E_mea);
-    virtual void process_data(q_xyz_quat_type *pose);
-private:
-    int samples;
-    q_xyz_quat_type pose_E_est, pose_E_mea, pose_EST_prev;
-};
-
 class filter_exp1dyn : public filter_abstract
 {
 public:

@@ -93,12 +93,7 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
                 /* check if dst for free-d specified */
                 while (p < argc && !strcmp(argv[p], "filter"))
                 {
-                    if (!strcmp(argv[p + 1], "kalman"))
-                    {
-                        newCAM.get()->filterAdd(new filter_kalman(atof(argv[p + 2]), atof(argv[p + 3])));
-                        p += 4;
-                    }
-                    else if (!strcmp(argv[p + 1], "exp1"))
+                    if (!strcmp(argv[p + 1], "exp1"))
                     {
                         newCAM.get()->filterAdd(new filter_exp1(atof(argv[p + 2]), atof(argv[p + 3])));
                         p += 4;
