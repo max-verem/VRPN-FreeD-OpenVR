@@ -34,30 +34,6 @@ BOOL WINAPI handleConsoleSignalsWin(DWORD signaltype)
 }
 #endif
 
-static void timer_ticker_thread(HANDLE* pevent, int sleep_interval_ms)
-{
-    LARGE_INTEGER ticks_per_second;
-
-    QueryPerformanceFrequency(&ticks_per_second);
-
-    while (!done)
-    {
-        LARGE_INTEGER counter_before;
-        QueryPerformanceCounter(&counter_before);
-        LONGLONG wait_ticks = ticks_per_second.QuadPart * sleep_interval_ms / 1000LL;
-        LONGLONG wait_until = counter_before.QuadPart + wait_ticks;
-        for (;;)
-        {
-            LARGE_INTEGER counter_after;
-            if (!QueryPerformanceCounter(&counter_after))
-                break;
-            if (counter_after.QuadPart >= wait_until)
-                break;
-        };
-        SetEvent(*pevent);
-    }
-};
-
 static void console_update_thread()
 {
     while (!done)
@@ -67,28 +43,54 @@ static void console_update_thread()
     };
 };
 
-int main(int argc, char *argv[]) {
-    HANDLE hTimer;
-#if 0
-#define WS_VER_MAJOR 2
-#define WS_VER_MINOR 2
+int64_t qpc_diff_us(LARGE_INTEGER *B, LARGE_INTEGER *A)
+{
+    int64_t r;
+    LARGE_INTEGER ticks_per_second;
+    QueryPerformanceFrequency(&ticks_per_second);
 
-    // init winsock
-    WSADATA wsaData;
-    WSAStartup
-    (
-        ((unsigned long)WS_VER_MAJOR) |
-        (((unsigned long)WS_VER_MINOR) << 8),
-        &wsaData
-    );
-#endif
+    r = (B->QuadPart - A->QuadPart) * 1000000LL / ticks_per_second.QuadPart;
+
+    return r;
+};
+
+int main(int argc, char *argv[]) {
+
     std::thread cu(console_update_thread);
     server = std::make_unique<vrpn_Server_OpenVR>(argc, argv);
-    hTimer = CreateEvent(NULL, FALSE, FALSE, NULL);
-    std::thread ticker(timer_ticker_thread, &hTimer, server->sleep_interval);
+
+    SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+
+    LARGE_INTEGER counter_to, counter_now, ticks_per_second, counter_overrun;
+    QueryPerformanceCounter(&counter_to);
+
+#define MAX_HIST_OVERRUN 32
+    int64_t overruns_cnt = 0, overruns1_last, overruns2_last;
+    int64_t overruns1[MAX_HIST_OVERRUN], overruns2[MAX_HIST_OVERRUN];
+
     while (!done) {
+        QueryPerformanceFrequency(&ticks_per_second);
+        QueryPerformanceCounter(&counter_now);
+        counter_to.QuadPart += ticks_per_second.QuadPart * server->sleep_interval / 1000LL;
+        if (counter_to.QuadPart < counter_now.QuadPart)
+        {
+            int64_t t1 = qpc_diff_us(&counter_now, &counter_to);
+            counter_to.QuadPart = counter_now.QuadPart;
+        }
+        else
+        for (;;)
+        {
+            if (!QueryPerformanceCounter(&counter_now))
+                break;
+            if (counter_now.QuadPart >= counter_to.QuadPart)
+                break;
+        };
+        overruns1_last = overruns1[overruns_cnt % MAX_HIST_OVERRUN] = qpc_diff_us(&counter_now, &counter_to);
         server->mainloop();
-        WaitForSingleObject(hTimer, 1000);
+        QueryPerformanceCounter(&counter_overrun);
+        overruns2_last = overruns2[overruns_cnt % MAX_HIST_OVERRUN] = qpc_diff_us(&counter_overrun, &counter_now);
+        overruns_cnt++;
     }
     server.reset(nullptr);
     cu.join();

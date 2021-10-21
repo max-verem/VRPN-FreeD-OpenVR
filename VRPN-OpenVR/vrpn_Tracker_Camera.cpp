@@ -17,7 +17,6 @@ vrpn_Tracker_Camera::vrpn_Tracker_Camera(int idx, const std::string& name, vrpn_
 {
     arm = *_arm;
     filters_cnt = 0;
-
     // Initialize the vrpn_Tracker
     // We track each device separately so this will only ever have one sensor
     vrpn_Tracker::num_sensors = 1;
@@ -36,7 +35,6 @@ std::string vrpn_Tracker_Camera::getTrackerSerial()
 void vrpn_Tracker_Camera::mainloop() {
 //    vrpn_gettimeofday( &(vrpn_Tracker_Camera::timestamp), NULL );
 	vrpn_Tracker::server_mainloop();
-    freedSend();
 }
 
 void vrpn_Tracker_Camera::freedAdd(char *host_port)

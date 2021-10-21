@@ -17,6 +17,8 @@ vrpn_Server_OpenVR::vrpn_Server_OpenVR(int argc, char *argv[])
     q_copy(ref.quat, I);
 
     sleep_interval = 1;
+    freed_cnt = 0;
+    freed_div = 1;
 
     // Initialize OpenVR
     vr::EVRInitError eError = vr::VRInitError_None;
@@ -185,31 +187,28 @@ static void console_put_xyz_quat(const char* title, const q_xyz_quat_type *val)
     free(buf);
 }
 
-static int64_t utils_timeval_diff_us(struct timeval *B, struct timeval *A)
-{
-    int64_t r;
+extern int64_t qpc_diff_us(LARGE_INTEGER *B, LARGE_INTEGER *A);
 
-    r = B->tv_sec - A->tv_sec;
-    r *= 1000000LL;
-    r += B->tv_usec - A->tv_usec;
-
-    return r;
-};
-
-static struct timeval timestamp5 = { 0, 0 };
+static LARGE_INTEGER timestamp5 = { 0 };
 
 void vrpn_Server_OpenVR::mainloop() {
     char *buf = NULL, press;
     int ref_tracker_idx = -1;
-    struct timeval timestamp;
-    struct timeval timestamp2, timestamp3, timestamp4;
+    struct timeval now;
+    LARGE_INTEGER timestamp[5];
 
-    press = console_keypress(console_in);
-    if (press >= '0' && press <= '9')
-        ref_tracker_idx = press - '0';
+    vrpn_gettimeofday(&now, NULL);
+    QueryPerformanceCounter(&timestamp[0]);
+
+    /* send all cameras freed data */
+    freed_cnt++;
+    if(!freed_div || !(freed_cnt % freed_div))
+        for (const auto& ci : cameras)
+            ci->freedSend();
+
+    QueryPerformanceCounter(&timestamp[1]);
 
     // Get Tracking Information
-    vrpn_gettimeofday(&timestamp, NULL);
     vr::TrackedDevicePose_t m_rTrackedDevicePose[vr::k_unMaxTrackedDeviceCount];
     vr->GetDeviceToAbsoluteTrackingPose(    /// https://github.com/ValveSoftware/openvr/wiki/IVRSystem::GetDeviceToAbsoluteTrackingPose
         vr::TrackingUniverseStanding,
@@ -217,7 +216,12 @@ void vrpn_Server_OpenVR::mainloop() {
         m_rTrackedDevicePose,
         vr::k_unMaxTrackedDeviceCount
     );
-    vrpn_gettimeofday(&timestamp2, NULL);
+    QueryPerformanceCounter(&timestamp[2]);
+
+    // get pressed key info
+    press = console_keypress(console_in);
+    if (press >= '0' && press <= '9')
+        ref_tracker_idx = press - '0';
 
     // show built info
     buf = NULL;
@@ -225,7 +229,6 @@ void vrpn_Server_OpenVR::mainloop() {
     console_put(buf);
     if (buf) free(buf);
     console_put("");
-
     for (vr::TrackedDeviceIndex_t unTrackedDevice = 0; unTrackedDevice < vr::k_unMaxTrackedDeviceCount; unTrackedDevice++) {
         const char* state = "Running_OK";
         int f_update_data = 1;
@@ -315,7 +318,7 @@ void vrpn_Server_OpenVR::mainloop() {
                 continue;
 
             /* do some precomputation */
-            ci->updateTracking(&stk, &mnt, &ref, &timestamp);
+            ci->updateTracking(&stk, &mnt, &ref, &now);
             ci->mainloop();
         }
 
@@ -364,7 +367,7 @@ void vrpn_Server_OpenVR::mainloop() {
     /* empty line */
     console_put("");
 
-    vrpn_gettimeofday(&timestamp3, NULL);
+    QueryPerformanceCounter(&timestamp[3]);
 
     // Send and receive all messages.
     connection->mainloop();
@@ -374,17 +377,17 @@ void vrpn_Server_OpenVR::mainloop() {
         std::cerr << "Connection is not doing ok. Should we bail?" << std::endl;
     }
 
-    vrpn_gettimeofday(&timestamp4, NULL);
+    QueryPerformanceCounter(&timestamp[4]);
 
     // show some timings
     buf = NULL;
-    asprintf(&buf, "stat: %8lld us, %8lld us, %8lld us, %8lld us",
-        utils_timeval_diff_us(&timestamp2, &timestamp),
-        utils_timeval_diff_us(&timestamp3, &timestamp),
-        utils_timeval_diff_us(&timestamp4, &timestamp),
-        utils_timeval_diff_us(&timestamp, &timestamp5)
+    asprintf(&buf, "stat: %8lld us, %8lld us, %8lld us, %8lld us, %8lld us",
+        qpc_diff_us(&timestamp[1], &timestamp[0]),
+        qpc_diff_us(&timestamp[2], &timestamp[1]),
+        qpc_diff_us(&timestamp[3], &timestamp[2]),
+        qpc_diff_us(&timestamp[4], &timestamp[3]),
+        qpc_diff_us(&timestamp[0], &timestamp5)
     );
-    timestamp5 = timestamp;
     console_put(buf);
     if (buf) free(buf);
 
@@ -393,6 +396,8 @@ void vrpn_Server_OpenVR::mainloop() {
 
     // setup cusrsor to top
     console_swap_fb();
+
+    timestamp5 = timestamp[0];
 }
 
 const std::string vrpn_Server_OpenVR::getDeviceClassName(vr::ETrackedDeviceClass device_class_id)

@@ -19,8 +19,8 @@ public:
     std::string getTrackerSerial();
     void freedAdd(char *host_port);
     void filterAdd(filter_abstract* flt);
-protected:
     void freedSend();
+protected:
 
 private:
     q_xyz_quat_type arm;

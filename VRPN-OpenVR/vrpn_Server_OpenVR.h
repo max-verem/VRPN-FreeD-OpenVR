@@ -53,5 +53,6 @@ private:
     std::map<vr::TrackedDeviceIndex_t, std::unique_ptr<vrpn_Tracker_OpenVR>> devices{};
     std::list<std::unique_ptr<vrpn_Tracker_Camera>> cameras{};
     q_xyz_quat_type stk, ref;
+    int64_t freed_cnt, freed_div;
 };
 

@@ -170,12 +170,15 @@ void console_swap_fb()
     memset(console_fb[0], 0, console_window_width * console_window_height);
 };
 
+void console_swap_fb2()
+{
+    std::lock_guard<std::mutex> guard(g_pages_mutex);
+    memcpy(console_fb[2], console_fb[1], console_window_width * console_window_height);
+};
+
 void console_blit_fb()
 {
-    {
-        std::lock_guard<std::mutex> guard(g_pages_mutex);
-        memcpy(console_fb[2], console_fb[1], console_window_width * console_window_height);
-    };
+    console_swap_fb2();
 
     SetConsoleCursorPosition(console_out, { 0, 0 });
     //    console_cls(GetStdHandle(STD_ERROR_HANDLE));
